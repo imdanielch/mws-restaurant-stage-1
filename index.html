@@ -26,11 +26,11 @@
     <aside>
       <div class="filter-options" role="search">
         <h2>Filter by neighborhood and cuisines</h2>
-        <label for="neighborhoods-select" class="hidden">Select desired neighborhood</label>
+        <label for="neighborhoods-select" class="hidden">Select desired neighborhood area for list of restaurants</label>
         <select id="neighborhoods-select" name="neighborhoods" onchange="updateRestaurants()" aria-controls="restaurants-list">
           <option value="all">All Neighborhoods</option>
         </select>
-        <label for="cuisines-select" class="hidden">Select desired cuisine style</label>
+        <label for="cuisines-select" class="hidden">Select desired cuisine style for list of restaurants</label>
         <select id="cuisines-select" name="cuisines" onchange="updateRestaurants()" aria-controls="restaurants-list">
           <option value="all">All Cuisines</option>
         </select>
@@ -44,6 +44,7 @@
   <script src="js/dbhelper.js"></script>
   <script src="js/env.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/register-service-worker.js"></script>
   <!-- <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places&callback=initMap"></script> -->
 
 

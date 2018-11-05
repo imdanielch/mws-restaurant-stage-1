@@ -17,25 +17,34 @@ initMap = () => {
       // Got an error!
       console.error(error);
     } else {
-      self.newMap = L.map("map", {
-        center: [restaurant.latlng.lat, restaurant.latlng.lng],
-        zoom: 16,
-        scrollWheelZoom: false
-      });
-      L.tileLayer(
-        "https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.jpg70?access_token={mapboxToken}",
-        {
-          mapboxToken: mapboxToken,
-          maxZoom: 18,
-          attribution:
-            'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
-            '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-            'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-          id: "mapbox.streets"
-        }
-      ).addTo(newMap);
+      // if L is not defined, skip initiating map
+      if(typeof L !== "undefined") {
+        self.newMap = L.map("map", {
+          center: [restaurant.latlng.lat, restaurant.latlng.lng],
+          zoom: 16,
+          scrollWheelZoom: false
+        });
+        L.tileLayer(
+          "https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.jpg70?access_token={mapboxToken}",
+          {
+            mapboxToken: mapboxToken,
+            maxZoom: 18,
+            attribution:
+              'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+              '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+              'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            id: "mapbox.streets"
+          }
+        ).addTo(newMap);
+        DBHelper.mapMarkerForRestaurant(self.restaurant, self.newMap);
+      } else {
+        // display a warning saying that the maps can't be shown.
+        const map = document.getElementById('map');
+        map.innerHTML = `<div class="warning-title">Warning!</div>
+        <div class="warning-message">Maps can't be loaded, are we offline?</div>`;
+      }
+
       fillBreadcrumb();
-      DBHelper.mapMarkerForRestaurant(self.restaurant, self.newMap);
     }
   });
 };
