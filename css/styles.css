@@ -133,7 +133,6 @@ nav h1 a {
 /* ---------------------- Map ---------------------- */
 #map {
   height: 30vh;
-  min-height: 300px;
   width: 100%;
   background-color: #ccc;
 }
@@ -367,7 +366,7 @@ nav h1 a {
 }
 
 /* --------------- Screen Reader Styles -------------- */
-.screen-reader-options {
+.hidden {
   position: absolute;
   left: -9999999px;
   top: auto;
