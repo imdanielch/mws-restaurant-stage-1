@@ -73,7 +73,7 @@ fillCuisinesHTML = (cuisines = self.cuisines) => {
  */
 initMap = () => {
   // if L is not defined, skip initiating map
-  if(typeof L !== "undefined") {
+  if (typeof L !== "undefined") {
     self.newMap = L.map("map", {
       center: [40.722216, -73.987501],
       zoom: 12,
@@ -93,7 +93,7 @@ initMap = () => {
     ).addTo(newMap);
   } else {
     // display a warning saying that the maps can't be shown.
-    const map = document.getElementById('map');
+    const map = document.getElementById("map");
     map.innerHTML = `<div class="warning-title">Warning!</div>
     <div class="warning-message">Maps can't be loaded, are we offline?</div>`;
   }
@@ -178,10 +178,10 @@ createRestaurantHTML = restaurant => {
   const image = document.createElement("img");
   image.className = "restaurant-img";
   image.src = DBHelper.imageUrlForRestaurant(restaurant);
-  image.alt = restaurant.alt;
+  image.alt = `Image representation of the restaurant ${restaurant.name}`;
   li.append(image);
 
-  const name = document.createElement("h1");
+  const name = document.createElement("h3");
   name.innerHTML = restaurant.name;
   li.append(name);
 
@@ -195,7 +195,7 @@ createRestaurantHTML = restaurant => {
 
   const more = document.createElement("a");
   more.innerHTML = "View Details";
-  more.setAttribute('aria-label', `More information for ${restaurant.name}`);
+  more.setAttribute("aria-label", `More information for ${restaurant.name}`);
   more.href = DBHelper.urlForRestaurant(restaurant);
   li.append(more);
 
@@ -207,7 +207,9 @@ createRestaurantHTML = restaurant => {
  */
 addMarkersToMap = (restaurants = self.restaurants) => {
   // return if L or newMap is not defined, most likely due to offline mode.
-  if(typeof L === "undefined" || typeof newMap === "undefined"){ return; } else {
+  if (typeof L === "undefined" || typeof newMap === "undefined") {
+    return;
+  } else {
     restaurants.forEach(restaurant => {
       // Add marker to the map
       const marker = DBHelper.mapMarkerForRestaurant(restaurant, self.newMap);

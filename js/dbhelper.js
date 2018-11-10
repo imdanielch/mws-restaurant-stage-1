@@ -7,50 +7,93 @@ class DBHelper {
    * Change this to restaurants.json file location on your server.
    */
   static get DATABASE_URL() {
-    const port = 8000; // Change this to your server port
-    return `http://localhost:${port}/data/restaurants.json`;
+    const port = 1337; // Change this to your server port
+    return `http://localhost:${port}/restaurants`;
   }
 
   /**
    * Fetch all restaurants.
    */
   static fetchRestaurants(callback) {
-    let xhr = new XMLHttpRequest();
-    xhr.open("GET", DBHelper.DATABASE_URL);
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        // Got a success response from server!
-        const json = JSON.parse(xhr.responseText);
-        const restaurants = json.restaurants;
-        callback(null, restaurants);
-      } else {
-        // Oops!. Got an error from server.
-        const error = `Request failed. Returned status of ${xhr.status}`;
-        callback(error, null);
-      }
-    };
-    xhr.send();
+    // try to get from network, if that fails, get from indexDB
+    // reason is if there's more data remotely and some data on indexDB
+    // you'd only get local data and never update.
+    return fetch(DBHelper.DATABASE_URL, {
+      method: "GET"
+    })
+      .then(function(response) {
+        return response.status === 200 ? response.json() : response;
+      })
+      .then(function(json) {
+        json.map(data => {
+          dbPromise.then(db => {
+            const tx = db.transaction("restaurants", "readwrite");
+            tx.objectStore("restaurants").put(data);
+            return tx.complete;
+          });
+        });
+        return callback(null, json);
+      })
+      .catch(function(error) {
+        dbPromise
+          .then(db => {
+            return db
+              .transaction("restaurants")
+              .objectStore("restaurants")
+              .getAll();
+          })
+          .then(allObjs => {
+            if (allObjs.length > 0) {
+              return callback(null, allObjs);
+            } else {
+              throw "no data in indexDB";
+            }
+          })
+          .catch(function(error) {
+            const errorMsg = `Request failed. Returned status of ${error}`;
+            return callback(errorMsg, null);
+          });
+      });
   }
 
   /**
    * Fetch a restaurant by its ID.
    */
   static fetchRestaurantById(id, callback) {
-    // fetch all restaurants with proper error handling.
-    DBHelper.fetchRestaurants((error, restaurants) => {
-      if (error) {
-        callback(error, null);
-      } else {
-        const restaurant = restaurants.find(r => r.id == id);
-        if (restaurant) {
-          // Got the restaurant
-          callback(null, restaurant);
+    return dbPromise
+      .then(db => {
+        return db
+          .transaction("restaurants")
+          .objectStore("restaurants")
+          .get(Number(id));
+      })
+      .then(obj => {
+        if (obj) {
+          return callback(null, obj);
         } else {
-          // Restaurant does not exist in the database
-          callback("Restaurant does not exist", null);
+          throw "no data in indexDB";
         }
-      }
-    });
+      })
+      .catch(function(err) {
+        fetch(`${DBHelper.DATABASE_URL}/${id}`, {
+          method: "GET"
+        })
+          .then(function(response) {
+            return response.status === 200 ? response.json() : response;
+          })
+          .then(function(json) {
+            // save to store
+            dbPromise.then(db => {
+              const tx = db.transaction("restaurants", "readwrite");
+              tx.objectStore("restaurants").put(json);
+              return tx.complete;
+            });
+            return callback(null, json);
+          })
+          .catch(function(error) {
+            callback("Restaurant does not exist", null);
+          });
+      });
   }
 
   /**
@@ -165,7 +208,10 @@ class DBHelper {
    * Restaurant image URL.
    */
   static imageUrlForRestaurant(restaurant) {
-    return `/img/${restaurant.photograph}`;
+    // if the field doesn't exist, return undefined for error handling.
+    return `/img/${
+      restaurant.photograph ? restaurant.photograph : restaurant.id
+    }.jpg`;
   }
 
   /**

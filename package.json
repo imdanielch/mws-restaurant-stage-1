@@ -1,0 +1,30 @@
+{
+  "name": "mws-restaurant-stage-1",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielim/mws-restaurant-stage-1.git"
+  },
+  "scripts": {
+    "dev": "gulp",
+    "scripts": "gulp dist"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "browser-sync": "^2.26.3",
+    "eslint-config-prettier": "^3.1.0",
+    "eslint-plugin-prettier": "^3.0.0",
+    "gulp": "^3.9.1",
+    "gulp-autoprefixer": "^6.0.0",
+    "gulp-babel": "^8.0.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-eslint": "^5.0.0",
+    "gulp-if": "^2.0.2",
+    "gulp-lint": "0.0.1",
+    "gulp-sass": "^4.0.2",
+    "prettier": "^1.15.1"
+  },
+  "dependencies": {
+    "idb": "^2.1.3"
+  }
+}
