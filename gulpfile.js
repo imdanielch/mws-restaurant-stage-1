@@ -7,7 +7,7 @@ const concat = require("gulp-concat");
 const eslint = require('gulp-eslint');
 
 gulp.task("default", ["copy-manifest", "copy-html", "copy-images", "styles", "lint-fix", "scripts-dist", 'copy-js', 'copy-swjs'], function() {
-  gulp.watch("js/**/*.js", ["lint-fix", "scripts"]);
+  gulp.watch("js/**/*.js", ["lint-fix", "scripts-dist", "copy-js"]);
   gulp.watch("/*.html", ["copy-html"]);
   gulp.watch("sass/**/*.scss", ["styles"]);
 
@@ -17,16 +17,12 @@ gulp.task("default", ["copy-manifest", "copy-html", "copy-images", "styles", "li
 });
 
 gulp.task('dist', [
-  'copy-html',
-  'copy-images',
-  'styles',
-  'lint',
-  'scripts-dist'
+  "copy-html", "copy-images", "styles", "lint-fix", "scripts-dist", 'copy-js', 'copy-swjs'
 ]);
 
 gulp.task("copy-js", function() {
   gulp
-    .src(['js/main.js', 'js/restaurant_info.js', 'js/idb.js', 'js/store.js'])
+    .src(['js/main.js', 'js/restaurant_info.js', 'js/idb.js', 'js/store.js', 'js/moment.min.js'])
     .pipe(gulp.dest('dist/js'));
 });
 
@@ -95,7 +91,7 @@ gulp.task("copy-images", function() {
 
 gulp.task("scripts-dist", function() {
   gulp
-    .src(['js/**/*.js', '!js/main.js', '!js/restaurant_info.js', '!js/idb.js', '!js/store.js'])
+    .src(['js/**/*.js', '!js/main.js', '!js/restaurant_info.js', '!js/idb.js', '!js/store.js', '!js/moment.min.js'])
     .pipe(concat('all.js'))
     .pipe(gulp.dest('dist/js'));
 });

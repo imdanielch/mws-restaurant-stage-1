@@ -8,7 +8,7 @@ class DBHelper {
    */
   static get DATABASE_URL() {
     const port = 1337; // Change this to your server port
-    return `http://localhost:${port}/restaurants`;
+    return `http://localhost:${port}/`;
   }
 
   /**
@@ -18,7 +18,7 @@ class DBHelper {
     // try to get from network, if that fails, get from indexDB
     // reason is if there's more data remotely and some data on indexDB
     // you'd only get local data and never update.
-    return fetch(DBHelper.DATABASE_URL, {
+    return fetch(`${DBHelper.DATABASE_URL}restaurants`, {
       method: "GET"
     })
       .then(function(response) {
@@ -75,7 +75,7 @@ class DBHelper {
         }
       })
       .catch(function(err) {
-        fetch(`${DBHelper.DATABASE_URL}/${id}`, {
+        fetch(`${DBHelper.DATABASE_URL}restaurants/${id}`, {
           method: "GET"
         })
           .then(function(response) {
@@ -93,6 +93,52 @@ class DBHelper {
           .catch(function(error) {
             callback("Restaurant does not exist", null);
           });
+      });
+  }
+
+  /**
+   * Fetch a restaurant reviews by its ID.
+   * URL: http://localhost:1337/reviews/?restaurant_id=<restaurant_id>
+   */
+  static fetchRestaurantReviewsById(id, callback) {
+    return dbPromise
+      .then(db => {
+        return db
+          .transaction("reviews")
+          .objectStore("reviews")
+          .index("restaurant_id")
+          .getAll(Number(id));
+      })
+      .then(obj => {
+        // If no reviews in indexedDB, try fetching.
+        if (obj.length > 0) {
+          return callback(null, obj);
+        } else {
+          // console.log("no data in indexDB. Fetching from network");
+          fetch(`${DBHelper.DATABASE_URL}reviews/?restaurant_id=${id}`, {
+            method: "GET"
+          })
+            .then(function(response) {
+              return response.status === 200 ? response.json() : response;
+            })
+            .then(function(json) {
+              // save to store
+              dbPromise.then(db => {
+                const tx = db.transaction("reviews", "readwrite");
+                // Should return array, so step through and put them in individually.
+                if (Array.isArray(json)) {
+                  json.map(review => {
+                    return tx.objectStore("reviews").put(review);
+                  });
+                }
+                return tx.complete;
+              });
+              return callback(null, json);
+            })
+            .catch(function(error) {
+              callback("Reviews for restaurant does not exist", null);
+            });
+        }
       });
   }
 

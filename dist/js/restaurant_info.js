@@ -1,4 +1,5 @@
 let restaurant;
+let reviews;
 var newMap;
 
 /**
@@ -17,6 +18,7 @@ restaurantInitMap = () => {
       // Got an error!
       console.error(error);
     } else {
+      // Instantiate map then generate breadcrumbs
       // if L is not defined, skip initiating map
       if (typeof L !== "undefined") {
         self.newMap = L.map("map", {
@@ -80,6 +82,7 @@ restaurantFetchRestaurantFromURL = callback => {
     error = "No restaurant id in URL";
     callback(error, null);
   } else {
+    // Fetch for restaurant info and then fill restaurant HTML
     DBHelper.fetchRestaurantById(id, (error, restaurant) => {
       self.restaurant = restaurant;
       if (!restaurant) {
@@ -88,6 +91,16 @@ restaurantFetchRestaurantFromURL = callback => {
       }
       restaurantFillRestaurantHTML();
       callback(null, restaurant);
+    });
+    // Fetch restaurant reviews and then fill restaurant HTML for reviews.
+    DBHelper.fetchRestaurantReviewsById(id, (error, reviews) => {
+      self.reviews = reviews;
+      if (!self.reviews) {
+        console.error(error);
+        return;
+      }
+      // fill reviews
+      RestaurantFillReviewsHTML();
     });
   }
 };
@@ -114,8 +127,6 @@ restaurantFillRestaurantHTML = (restaurant = self.restaurant) => {
   if (restaurant.operating_hours) {
     restaurantFillRestaurantHoursHTML();
   }
-  // fill reviews
-  RestaurantFillReviewsHTML();
 };
 
 /**
@@ -143,7 +154,7 @@ restaurantFillRestaurantHoursHTML = (
 /**
  * Create all reviews HTML and add them to the webpage.
  */
-RestaurantFillReviewsHTML = (reviews = self.restaurant.reviews) => {
+RestaurantFillReviewsHTML = (reviews = self.reviews) => {
   const container = document.getElementById("reviews-container");
   const title = document.createElement("h2");
   title.innerHTML = "Reviews";
@@ -172,7 +183,9 @@ restaurantCreateReviewHTML = review => {
   li.appendChild(name);
 
   const date = document.createElement("p");
-  date.innerHTML = review.date;
+  date.innerHTML = moment
+    .unix(review.updatedAt / 1000)
+    .format("MMM Do, YYYY h:mm:ss A");
   li.appendChild(date);
 
   const rating = document.createElement("p");

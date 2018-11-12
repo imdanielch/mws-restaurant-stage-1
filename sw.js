@@ -1,26 +1,24 @@
-var staticCacheName = 'mws-s2';
-var contentImgsCache = 'mws-s2-images';
-var allCaches = [
-  staticCacheName,
-  contentImgsCache
-];
+var staticCacheName = "mws-s2";
+var contentImgsCache = "mws-s2-images";
+var allCaches = [staticCacheName, contentImgsCache];
 
 /**
  * Install the service worker and cache static assets
  */
-self.addEventListener('install', function(event) {
+self.addEventListener("install", function(event) {
   event.waitUntil(
     caches.open(staticCacheName).then(function(cache) {
       return cache.addAll([
-        '/',
-        'restaurant.html',
-        'css/styles.css',
-        'js/idb.js',
-        'js/store.js',
-        'js/all.js',
-        'js/main.js',
-        'js/restaurant_info.js',
-        'manifest.json'
+        "/",
+        "restaurant.html",
+        "css/styles.css",
+        "js/moment.min.js",
+        "js/idb.js",
+        "js/store.js",
+        "js/all.js",
+        "js/main.js",
+        "js/restaurant_info.js",
+        "manifest.json"
       ]);
     })
   );
@@ -30,16 +28,20 @@ self.addEventListener('install', function(event) {
  * Activate service worker and delete previous caches pertaining to this application
  * if they exist.
  */
-self.addEventListener('activate', function(event) {
+self.addEventListener("activate", function(event) {
   event.waitUntil(
     caches.keys().then(function(cacheNames) {
       return Promise.all(
-        cacheNames.filter(function(cacheName) {
-          return cacheName.startsWith('mws-stage-1') &&
-                 !allCaches.includes(cacheName);
-        }).map(function(cacheName) {
-          return caches.delete(cacheName);
-        })
+        cacheNames
+          .filter(function(cacheName) {
+            return (
+              cacheName.startsWith("mws-stage-1") &&
+              !allCaches.includes(cacheName)
+            );
+          })
+          .map(function(cacheName) {
+            return caches.delete(cacheName);
+          })
       );
     })
   );
@@ -48,7 +50,7 @@ self.addEventListener('activate', function(event) {
 /**
  * Hijack fetch requests to be handled by service worker.
  */
-self.addEventListener('fetch', function(event) {
+self.addEventListener("fetch", function(event) {
   var requestUrl = new URL(event.request.url);
 
   // if requests is for our own static files.
@@ -56,21 +58,20 @@ self.addEventListener('fetch', function(event) {
     // When requesting restaurant.html the url contains params, we'll
     // strip the params to match restaurant.html and check if it's cached
     // if not, fall back to fetch from network.
-    if (requestUrl.pathname.startsWith('/restaurant.html')) {
-      event.respondWith(caches.match('/restaurant.html').then(function(response){
-        return (response
-          ? response
-          : fetch(event.request));
-          })
+    if (requestUrl.pathname.startsWith("/restaurant.html")) {
+      event.respondWith(
+        caches.match("/restaurant.html").then(function(response) {
+          return response ? response : fetch(event.request);
+        })
       );
     }
 
     // If request is for images, call on serveImage
-    if (requestUrl.pathname.startsWith('/img/')) {
+    if (requestUrl.pathname.startsWith("/img/")) {
       event.respondWith(serveImage(event.request));
       return;
     }
-    if (requestUrl.pathname.startsWith('/images/')) {
+    if (requestUrl.pathname.startsWith("/images/")) {
       event.respondWith(serveImage(event.request));
       return;
     }
