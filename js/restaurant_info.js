@@ -165,7 +165,7 @@ restaurantFillReviewsHTML = (reviews = self.reviews) => {
   console.log(reviews);
   const container = document.getElementById("reviews-container");
   //container.innerHTML = "";
-  const title = document.createElement("h2");
+  const title = document.createElement("h3");
   title.innerHTML = "Reviews";
   container.appendChild(title);
 
