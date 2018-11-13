@@ -41,7 +41,7 @@
     <!-- End map -->
     <!-- Beginning restaurant -->
     <article id="restaurant-container">
-      <h1 id="restaurant-name"></h1>
+      <h2 id="restaurant-name"></h2>
       <img id="restaurant-img">
       <p id="restaurant-cuisine"></p>
       <p id="restaurant-address"></p>
@@ -51,6 +51,31 @@
     <!-- Beginning reviews -->
     <section id="reviews-container" aria-label="Restaurant reviews">
       <ul id="reviews-list"></ul>
+    </section>
+    <section id="review-form-container" aria-label="Submit a new review">
+      <h2>Submit Review</h2>
+      <form action="/reviews" method="post" onsubmit="onSubmitReview(event)" id="review-form">
+        <div>
+          <input type="hidden" id="restaurant_id" name="restaurant_id" value="">
+          <label for="name" required>Name:</label>
+          <input type="text" id="name" name="name" placeholder="Fill your name">
+        </div>
+        <fieldset id="rating-radiogroup" required>
+          <legend>What is your review out of 5?</legend>
+          <input id="rating1" type="radio" name="rating" value="1"><label for="rating1">1</label><br>
+          <input id="rating2" type="radio" name="rating" value="2"><label for="rating2">2</label><br>
+          <input id="rating3" type="radio" name="rating" value="3"><label for="rating3">3</label><br>
+          <input id="rating4" type="radio" name="rating" value="4"><label for="rating4">4</label><br>
+          <input id="rating5" type="radio" name="rating" value="5"><label for="rating5">5</label><br>
+          <br>
+        </fieldset>
+        <div>
+          <label for="comments">Comments:</label><br />
+          <textarea id="comments" name="comments" placeholder="Input additional comments"></textarea>
+        </div>
+        <button type="submit" value="Submit">Submit Review</button>
+      </form>
+      <div></div>
     </section>
     <!-- End reviews -->
   </main>

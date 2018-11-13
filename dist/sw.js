@@ -1,3 +1,4 @@
+importScripts('js/idb.js', 'js/store.js', 'js/all.js');
 var staticCacheName = "mws-s2";
 var contentImgsCache = "mws-s2-images";
 var allCaches = [staticCacheName, contentImgsCache];
@@ -104,3 +105,94 @@ function serveImage(request) {
     });
   });
 }
+
+/**
+ * Background Sync
+ * http://frontend.turing.io/lessons/module-4/background-sync.html
+ * https://developers.google.com/web/updates/2015/12/background-sync
+ * November 12th, 2018
+ */
+self.addEventListener('sync', function(event) {
+  if (event.tag == 'offlineFavoriteSync') {
+    event.waitUntil(onlinePushFavorite());
+  } else if (event.tag == 'offlineReviewSync') {
+    event.waitUntil(onlinePushReview());
+  }
+});
+
+onlinePushReview = () => {
+  console.log("onlinePushReview");
+  // take from offline-reviews
+  dbPromise
+    .then(db => {
+      return db
+        .transaction("offline-reviews")
+        .objectStore("offline-reviews")
+        .getAll();
+    })
+    .then(allObjs => {
+      if (allObjs.length > 0) {
+        // we have offline reviews
+        return Promise.all(allObjs.map( obj => {
+          console.log(obj);
+          return fetch(`${DBHelper.DATABASE_URL}reviews`, {
+            method: "POST",
+            body: JSON.stringify(obj)
+          })
+          .then(response => {
+            if(response.ok){
+              dbPromise.then(db => {
+                const tx = db.transaction("offline-reviews", "readwrite");
+                tx.objectStore("offline-reviews").delete(obj.id);
+                return tx.complete;
+              });
+            }
+          })
+          .catch(error => {
+            console.log("onlinePushReview Error: ", error);
+          });
+        }));
+      }
+    })
+    .catch(function(error) {
+      const errorMsg = `Request failed. Returned status of ${error}`;
+      console.log("onlinePushReview Error: ", errorMsg);
+    });
+}
+
+onlinePushFavorite = () => {
+  // take from offline-reviews
+  dbPromise
+    .then(db => {
+      return db
+        .transaction("offline-favorites")
+        .objectStore("offline-favorites")
+        .getAll();
+    })
+    .then(allObjs => {
+      if (allObjs.length > 0) {
+        // we have offline reviews
+        return Promise.all(allObjs.map( obj => {
+          console.log(obj);
+          fetch(obj.url, { method: "PUT" })
+          .then(response => {
+            if(response.ok){
+              dbPromise.then(db => {
+                const tx = db.transaction("offline-reviews", "readwrite");
+                tx.objectStore("offline-reviews").delete(obj.id);
+                return tx.complete;
+              });
+            }
+          })
+          .catch(error => {
+            console.log("onlinePushReview Error: ", error);
+          });
+        }));
+      }
+    })
+    .catch(function(error) {
+      const errorMsg = `Request failed. Returned status of ${error}`;
+      console.log("onlinePushReview Error: ", errorMsg);
+    });
+}
+

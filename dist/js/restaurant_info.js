@@ -47,6 +47,7 @@ restaurantInitMap = () => {
       }
 
       restaurantFillBreadcrumb();
+      restaurantFillRestaurantIdForm();
     }
   });
 };
@@ -73,7 +74,9 @@ restaurantInitMap = () => {
 restaurantFetchRestaurantFromURL = callback => {
   if (self.restaurant) {
     // restaurant already fetched!
-    callback(null, self.restaurant);
+    if (typeof callback === "function") {
+      callback(null, self.restaurant);
+    }
     return;
   }
   const id = restaurantGetParameterByName("id");
@@ -91,16 +94,17 @@ restaurantFetchRestaurantFromURL = callback => {
       }
       restaurantFillRestaurantHTML();
       callback(null, restaurant);
-    });
-    // Fetch restaurant reviews and then fill restaurant HTML for reviews.
-    DBHelper.fetchRestaurantReviewsById(id, (error, reviews) => {
-      self.reviews = reviews;
-      if (!self.reviews) {
-        console.error(error);
-        return;
-      }
-      // fill reviews
-      RestaurantFillReviewsHTML();
+    }).then(() => {
+      // Fetch restaurant reviews and then fill restaurant HTML for reviews.
+      DBHelper.fetchRestaurantReviewsById(id, (error, reviews) => {
+        self.reviews = reviews;
+        if (!self.reviews) {
+          console.error(error);
+          return;
+        }
+        // fill reviews
+        restaurantFillReviewsHTML();
+      });
     });
   }
 };
@@ -111,6 +115,9 @@ restaurantFetchRestaurantFromURL = callback => {
 restaurantFillRestaurantHTML = (restaurant = self.restaurant) => {
   const name = document.getElementById("restaurant-name");
   name.innerHTML = restaurant.name;
+  // Fill in favorite button
+  const favBtn = generateFavButton(restaurant);
+  name.appendChild(favBtn);
 
   const address = document.getElementById("restaurant-address");
   address.innerHTML = restaurant.address;
@@ -154,8 +161,10 @@ restaurantFillRestaurantHoursHTML = (
 /**
  * Create all reviews HTML and add them to the webpage.
  */
-RestaurantFillReviewsHTML = (reviews = self.reviews) => {
+restaurantFillReviewsHTML = (reviews = self.reviews) => {
+  console.log(reviews);
   const container = document.getElementById("reviews-container");
+  //container.innerHTML = "";
   const title = document.createElement("h2");
   title.innerHTML = "Reviews";
   container.appendChild(title);
@@ -183,9 +192,14 @@ restaurantCreateReviewHTML = review => {
   li.appendChild(name);
 
   const date = document.createElement("p");
-  date.innerHTML = moment
-    .unix(review.updatedAt / 1000)
-    .format("MMM Do, YYYY h:mm:ss A");
+  if (review.updatedAt) {
+    date.innerHTML =
+      typeof review.updatedAt === "number"
+        ? moment.unix(review.updatedAt / 1000).format("MMM Do, YYYY h:mm:ss A")
+        : moment(review.updatedAt).format("MMM Do, YYYY h:mm:ss A");
+  } else {
+    date.innerHTML = "Offline Mode";
+  }
   li.appendChild(date);
 
   const rating = document.createElement("p");
@@ -227,3 +241,137 @@ restaurantGetParameterByName = (name, url) => {
   if (!results[2]) return "";
   return decodeURIComponent(results[2].replace(/\+/g, " "));
 };
+
+restaurantFillRestaurantIdForm = () => {
+  if (this.restaurant) {
+    const inputRestaurantId = document.getElementById("restaurant_id");
+    inputRestaurantId.value = this.restaurant.id;
+  }
+};
+
+/**
+ * Start submit process when the submit button is activated.
+ * gather form data, evaluate validity, submit if valid.
+ */
+onSubmitReview = e => {
+  // stop default behavior
+  e.preventDefault();
+
+  const form = document.getElementById("review-form");
+  if (errorHandleReview(form)) {
+    const formData = {
+      restaurant_id: Number(form.restaurant_id.value),
+      name: form.name.value,
+      rating: Number(form.rating.value),
+      comments: form.comments.value || ""
+    };
+    submitFormData(formData);
+  }
+};
+
+/**
+ * Evaluate form data
+ * return {Boolean}
+ */
+errorHandleReview = data => {
+  // wipe all alerts.
+  const alerts = document.getElementsByClassName("alert");
+  while (alerts[0]) {
+    alerts[0].parentNode.removeChild(alerts[0]);
+  }
+  // if restaurant_id is empty
+  if (!data.restaurant_id.value) {
+    // handle error
+    return false;
+  }
+  // if name is empty
+  if (!data.name.value) {
+    // handle error
+    console.log("missing name");
+    const alert = document.createElement("span");
+    alert.setAttribute("class", "alert");
+    alert.setAttribute("role", "alert");
+    alert.innerHTML = "Name is a required field";
+
+    const name = document.getElementById("name");
+    // Insert alert after the input field
+    name.parentNode.insertBefore(alert, name.nextSibling);
+    // focus on missing field
+    name.focus();
+    return false;
+  }
+  // if rating is empty
+  if (!data.rating.value) {
+    // handle error
+    console.log("missing rating");
+    const alert = document.createElement("span");
+    alert.setAttribute("class", "alert");
+    alert.setAttribute("role", "alert");
+    alert.innerHTML = "Selecting a rating is required";
+
+    const rating = document.getElementById("rating-radiogroup");
+    // Insert alert after the input field
+    rating.parentNode.insertBefore(alert, rating.nextSibling);
+    // focus on missing field
+    rating.focus();
+    return false;
+  }
+  return true;
+};
+
+/**
+ * Submit review
+ * attempt fetch post, if it succeeds, trigger fetch for review list
+ * if fetch post fails, save to indexedDB 'pending' until internet connection reestablishes
+ */
+submitFormData = data => {
+  console.log(data);
+  return fetch(`${DBHelper.DATABASE_URL}reviews`, {
+    method: "POST",
+    body: JSON.stringify(data)
+  })
+    .then(function(response) {
+      if (response.status >= 200 && response.status < 300) {
+        // call fetch for reviews and repopulate reviews HTML
+        DBHelper.fetchRestaurantReviewsById(
+          data.restaurant_id,
+          (error, reviews) => {
+            self.reviews = reviews;
+            if (!self.reviews) {
+              console.error(error);
+              return;
+            }
+            // fill reviews
+            restaurantFillReviewsHTML();
+          }
+        );
+      } else {
+        // Server error.
+        console.log(response.status);
+        console.log(response.statusText);
+      }
+    })
+    .catch(function(error) {
+      // POST failed, save to indexedDB 'offline-reviews'
+      dbPromise
+        .then(db => {
+          const tx = db.transaction("offline-reviews", "readwrite");
+          tx.objectStore("offline-reviews").put(data);
+          return tx.complete;
+        })
+        .then(() => {
+          console.log("offline review put in idb");
+          // https://developers.google.com/web/updates/2015/12/background-sync
+          // register sync with service worker
+          navigator.serviceWorker.ready.then(function(registration) {
+            console.log("sync register offline review");
+            return registration.sync.register("offlineReviewSync");
+          });
+          // reload page to show the new entry.
+          // can improve by using JS to append entry to end of page.
+          location.reload();
+        });
+    });
+};
+
+handleOffline = () => {};

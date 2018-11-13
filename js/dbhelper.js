@@ -18,36 +18,58 @@ class DBHelper {
     // try to get from network, if that fails, get from indexDB
     // reason is if there's more data remotely and some data on indexDB
     // you'd only get local data and never update.
-    return fetch(`${DBHelper.DATABASE_URL}restaurants`, {
-      method: "GET"
-    })
-      .then(function(response) {
-        return response.status === 200 ? response.json() : response;
+    return dbPromise
+      .then(db => {
+        return db
+          .transaction("restaurants")
+          .objectStore("restaurants")
+          .getAll();
       })
-      .then(function(json) {
-        json.map(data => {
-          dbPromise.then(db => {
-            const tx = db.transaction("restaurants", "readwrite");
-            tx.objectStore("restaurants").put(data);
-            return tx.complete;
+      .then(allObjs => {
+        if (allObjs.length > 0) {
+          return callback(null, allObjs);
+        }
+      })
+      .then(e => {
+        // update idb with data from network if available.
+        fetch(`${DBHelper.DATABASE_URL}restaurants`, {
+          method: "GET"
+        })
+          .then(function(response) {
+            return response.status === 200 ? response.json() : response;
+          })
+          .then(function(json) {
+            json.map(data => {
+              dbPromise.then(db => {
+                const tx = db.transaction("restaurants", "readwrite");
+                tx.objectStore("restaurants").put(data);
+                return tx.complete;
+              });
+            });
+            return callback(null, json);
+          })
+          .catch(function(error) {
+            const errorMsg = `Request failed. Returned status of ${error}`;
+            return callback(errorMsg, null);
           });
-        });
-        return callback(null, json);
       })
       .catch(function(error) {
-        dbPromise
-          .then(db => {
-            return db
-              .transaction("restaurants")
-              .objectStore("restaurants")
-              .getAll();
+        // if idb fails, try getting from network.
+        fetch(`${DBHelper.DATABASE_URL}restaurants`, {
+          method: "GET"
+        })
+          .then(function(response) {
+            return response.status === 200 ? response.json() : response;
           })
-          .then(allObjs => {
-            if (allObjs.length > 0) {
-              return callback(null, allObjs);
-            } else {
-              throw "no data in indexDB";
-            }
+          .then(function(json) {
+            json.map(data => {
+              dbPromise.then(db => {
+                const tx = db.transaction("restaurants", "readwrite");
+                tx.objectStore("restaurants").put(data);
+                return tx.complete;
+              });
+            });
+            return callback(null, json);
           })
           .catch(function(error) {
             const errorMsg = `Request failed. Returned status of ${error}`;
@@ -57,7 +79,7 @@ class DBHelper {
   }
 
   /**
-   * Fetch a restaurant by its ID.
+   * Fetch a restaurant by its ID. Try fetch from network, if it fails, get from indexedDB
    */
   static fetchRestaurantById(id, callback) {
     return dbPromise
@@ -71,10 +93,30 @@ class DBHelper {
         if (obj) {
           return callback(null, obj);
         } else {
-          throw "no data in indexDB";
+          // update from network
+          fetch(`${DBHelper.DATABASE_URL}restaurants/${id}`, {
+            method: "GET"
+          })
+            .then(function(response) {
+              return response.status === 200 ? response.json() : response;
+            })
+            .then(function(json) {
+              // save to store
+              dbPromise.then(db => {
+                const tx = db.transaction("restaurants", "readwrite");
+                tx.objectStore("restaurants").put(json);
+                return tx.complete;
+              });
+              return callback(null, json);
+            })
+            .catch(function(error) {
+              callback("Restaurant does not exist", null);
+            });
         }
       })
+      .then(() => {})
       .catch(function(err) {
+        // update from network
         fetch(`${DBHelper.DATABASE_URL}restaurants/${id}`, {
           method: "GET"
         })
@@ -99,46 +141,67 @@ class DBHelper {
   /**
    * Fetch a restaurant reviews by its ID.
    * URL: http://localhost:1337/reviews/?restaurant_id=<restaurant_id>
+   * fetch, if there's reviews, add to idb, then pull data from idb to return to callback
+   * if fetch fails, pull current data from idb.
    */
   static fetchRestaurantReviewsById(id, callback) {
-    return dbPromise
-      .then(db => {
-        return db
-          .transaction("reviews")
-          .objectStore("reviews")
-          .index("restaurant_id")
-          .getAll(Number(id));
+    // fetch network for new stuff and put into idb
+    fetch(`${DBHelper.DATABASE_URL}reviews/?restaurant_id=${id}`, {
+      method: "GET"
+    })
+      .then(function(response) {
+        return response.status === 200 ? response.json() : response;
       })
-      .then(obj => {
-        // If no reviews in indexedDB, try fetching.
-        if (obj.length > 0) {
-          return callback(null, obj);
-        } else {
-          // console.log("no data in indexDB. Fetching from network");
-          fetch(`${DBHelper.DATABASE_URL}reviews/?restaurant_id=${id}`, {
-            method: "GET"
-          })
-            .then(function(response) {
-              return response.status === 200 ? response.json() : response;
-            })
-            .then(function(json) {
-              // save to store
-              dbPromise.then(db => {
-                const tx = db.transaction("reviews", "readwrite");
-                // Should return array, so step through and put them in individually.
-                if (Array.isArray(json)) {
-                  json.map(review => {
-                    return tx.objectStore("reviews").put(review);
-                  });
-                }
-                return tx.complete;
-              });
-              return callback(null, json);
-            })
-            .catch(function(error) {
-              callback("Reviews for restaurant does not exist", null);
+      .then(function(json) {
+        // save to store
+        dbPromise.then(db => {
+          const tx = db.transaction("reviews", "readwrite");
+          // Should return array, so step through and put them in individually.
+          if (Array.isArray(json)) {
+            json.map(review => {
+              return tx.objectStore("reviews").put(review);
             });
-        }
+          }
+          return tx.complete;
+        });
+        return json;
+      })
+      .then(function(json) {
+        // get data from idb
+        return dbPromise.then(async db => {
+          const tx = db.transaction(
+            ["reviews", "offline-reviews"],
+            "readwrite"
+          );
+          const store1 = tx.objectStore("reviews").index("restaurant_id");
+          const store2 = tx
+            .objectStore("offline-reviews")
+            .index("restaurant_id");
+          const obj1 = await store1.getAll(Number(id));
+          const obj2 = await store2.getAll(Number(id));
+          // If no reviews in indexedDB, try fetching.
+          const mergedObj = obj1.concat(obj2);
+          return callback(null, mergedObj);
+        });
+      })
+      .catch(function(error) {
+        console.log(error);
+        return dbPromise.then(async db => {
+          const tx = db.transaction(
+            ["reviews", "offline-reviews"],
+            "readwrite"
+          );
+          const store1 = tx.objectStore("reviews").index("restaurant_id");
+          const store2 = tx
+            .objectStore("offline-reviews")
+            .index("restaurant_id");
+          const obj1 = await store1.getAll(Number(id));
+          const obj2 = await store2.getAll(Number(id));
+          // If no reviews in indexedDB, try fetching.
+          const mergedObj = obj1.concat(obj2);
+          console.log(mergedObj);
+          return callback(null, mergedObj);
+        });
       });
   }
 

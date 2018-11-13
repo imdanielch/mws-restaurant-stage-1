@@ -18,36 +18,58 @@ class DBHelper {
     // try to get from network, if that fails, get from indexDB
     // reason is if there's more data remotely and some data on indexDB
     // you'd only get local data and never update.
-    return fetch(`${DBHelper.DATABASE_URL}restaurants`, {
-      method: "GET"
-    })
-      .then(function(response) {
-        return response.status === 200 ? response.json() : response;
+    return dbPromise
+      .then(db => {
+        return db
+          .transaction("restaurants")
+          .objectStore("restaurants")
+          .getAll();
       })
-      .then(function(json) {
-        json.map(data => {
-          dbPromise.then(db => {
-            const tx = db.transaction("restaurants", "readwrite");
-            tx.objectStore("restaurants").put(data);
-            return tx.complete;
+      .then(allObjs => {
+        if (allObjs.length > 0) {
+          return callback(null, allObjs);
+        }
+      })
+      .then(e => {
+        // update idb with data from network if available.
+        fetch(`${DBHelper.DATABASE_URL}restaurants`, {
+          method: "GET"
+        })
+          .then(function(response) {
+            return response.status === 200 ? response.json() : response;
+          })
+          .then(function(json) {
+            json.map(data => {
+              dbPromise.then(db => {
+                const tx = db.transaction("restaurants", "readwrite");
+                tx.objectStore("restaurants").put(data);
+                return tx.complete;
+              });
+            });
+            return callback(null, json);
+          })
+          .catch(function(error) {
+            const errorMsg = `Request failed. Returned status of ${error}`;
+            return callback(errorMsg, null);
           });
-        });
-        return callback(null, json);
       })
       .catch(function(error) {
-        dbPromise
-          .then(db => {
-            return db
-              .transaction("restaurants")
-              .objectStore("restaurants")
-              .getAll();
+        // if idb fails, try getting from network.
+        fetch(`${DBHelper.DATABASE_URL}restaurants`, {
+          method: "GET"
+        })
+          .then(function(response) {
+            return response.status === 200 ? response.json() : response;
           })
-          .then(allObjs => {
-            if (allObjs.length > 0) {
-              return callback(null, allObjs);
-            } else {
-              throw "no data in indexDB";
-            }
+          .then(function(json) {
+            json.map(data => {
+              dbPromise.then(db => {
+                const tx = db.transaction("restaurants", "readwrite");
+                tx.objectStore("restaurants").put(data);
+                return tx.complete;
+              });
+            });
+            return callback(null, json);
           })
           .catch(function(error) {
             const errorMsg = `Request failed. Returned status of ${error}`;
@@ -57,7 +79,7 @@ class DBHelper {
   }
 
   /**
-   * Fetch a restaurant by its ID.
+   * Fetch a restaurant by its ID. Try fetch from network, if it fails, get from indexedDB
    */
   static fetchRestaurantById(id, callback) {
     return dbPromise
@@ -71,10 +93,30 @@ class DBHelper {
         if (obj) {
           return callback(null, obj);
         } else {
-          throw "no data in indexDB";
+          // update from network
+          fetch(`${DBHelper.DATABASE_URL}restaurants/${id}`, {
+            method: "GET"
+          })
+            .then(function(response) {
+              return response.status === 200 ? response.json() : response;
+            })
+            .then(function(json) {
+              // save to store
+              dbPromise.then(db => {
+                const tx = db.transaction("restaurants", "readwrite");
+                tx.objectStore("restaurants").put(json);
+                return tx.complete;
+              });
+              return callback(null, json);
+            })
+            .catch(function(error) {
+              callback("Restaurant does not exist", null);
+            });
         }
       })
+      .then(() => {})
       .catch(function(err) {
+        // update from network
         fetch(`${DBHelper.DATABASE_URL}restaurants/${id}`, {
           method: "GET"
         })
@@ -99,46 +141,67 @@ class DBHelper {
   /**
    * Fetch a restaurant reviews by its ID.
    * URL: http://localhost:1337/reviews/?restaurant_id=<restaurant_id>
+   * fetch, if there's reviews, add to idb, then pull data from idb to return to callback
+   * if fetch fails, pull current data from idb.
    */
   static fetchRestaurantReviewsById(id, callback) {
-    return dbPromise
-      .then(db => {
-        return db
-          .transaction("reviews")
-          .objectStore("reviews")
-          .index("restaurant_id")
-          .getAll(Number(id));
+    // fetch network for new stuff and put into idb
+    fetch(`${DBHelper.DATABASE_URL}reviews/?restaurant_id=${id}`, {
+      method: "GET"
+    })
+      .then(function(response) {
+        return response.status === 200 ? response.json() : response;
       })
-      .then(obj => {
-        // If no reviews in indexedDB, try fetching.
-        if (obj.length > 0) {
-          return callback(null, obj);
-        } else {
-          // console.log("no data in indexDB. Fetching from network");
-          fetch(`${DBHelper.DATABASE_URL}reviews/?restaurant_id=${id}`, {
-            method: "GET"
-          })
-            .then(function(response) {
-              return response.status === 200 ? response.json() : response;
-            })
-            .then(function(json) {
-              // save to store
-              dbPromise.then(db => {
-                const tx = db.transaction("reviews", "readwrite");
-                // Should return array, so step through and put them in individually.
-                if (Array.isArray(json)) {
-                  json.map(review => {
-                    return tx.objectStore("reviews").put(review);
-                  });
-                }
-                return tx.complete;
-              });
-              return callback(null, json);
-            })
-            .catch(function(error) {
-              callback("Reviews for restaurant does not exist", null);
+      .then(function(json) {
+        // save to store
+        dbPromise.then(db => {
+          const tx = db.transaction("reviews", "readwrite");
+          // Should return array, so step through and put them in individually.
+          if (Array.isArray(json)) {
+            json.map(review => {
+              return tx.objectStore("reviews").put(review);
             });
-        }
+          }
+          return tx.complete;
+        });
+        return json;
+      })
+      .then(function(json) {
+        // get data from idb
+        return dbPromise.then(async db => {
+          const tx = db.transaction(
+            ["reviews", "offline-reviews"],
+            "readwrite"
+          );
+          const store1 = tx.objectStore("reviews").index("restaurant_id");
+          const store2 = tx
+            .objectStore("offline-reviews")
+            .index("restaurant_id");
+          const obj1 = await store1.getAll(Number(id));
+          const obj2 = await store2.getAll(Number(id));
+          // If no reviews in indexedDB, try fetching.
+          const mergedObj = obj1.concat(obj2);
+          return callback(null, mergedObj);
+        });
+      })
+      .catch(function(error) {
+        console.log(error);
+        return dbPromise.then(async db => {
+          const tx = db.transaction(
+            ["reviews", "offline-reviews"],
+            "readwrite"
+          );
+          const store1 = tx.objectStore("reviews").index("restaurant_id");
+          const store2 = tx
+            .objectStore("offline-reviews")
+            .index("restaurant_id");
+          const obj1 = await store1.getAll(Number(id));
+          const obj2 = await store2.getAll(Number(id));
+          // If no reviews in indexedDB, try fetching.
+          const mergedObj = obj1.concat(obj2);
+          console.log(mergedObj);
+          return callback(null, mergedObj);
+        });
       });
   }
 
@@ -304,3 +367,109 @@ if (navigator.serviceWorker) {
     );
   });
 }
+
+toggleFav = (e, callback) => {
+  //console.log(e.target.dataset.id);
+  //console.log(e.target);
+  const favBool = e.target.getAttribute("aria-pressed") == "true";
+  const url = `http://localhost:1337/restaurants/${
+    e.target.dataset.id
+  }/?is_favorite=${!favBool}`;
+  fetch(url, { method: "PUT" })
+    .then(response => {
+      if (response.status >= 200 && response.status < 300) {
+        e.target.setAttribute("aria-pressed", (!favBool).toString());
+        e.target.blur();
+        if (typeof callback === "function") {
+          callback();
+        }
+      }
+    })
+    .then(function() {
+      // update idb restaurants entry
+      console.log("update idb favorite entry");
+      return dbPromise
+        .then(async db => {
+          const tx = db.transaction("restaurants", "readwrite");
+          const store = tx.objectStore("restaurants");
+          const obj = await store.get(Number(e.target.dataset.id));
+          obj.is_favorite = !favBool;
+          obj.updatedAt = moment.now();
+
+          store.put(obj);
+          return tx.complete;
+        })
+        .catch(function(err) {
+          console.log(err);
+        });
+    })
+    .catch(function(error) {
+      // failed to fetch, maybe offline?
+      // fetch post failed, save to indexedDB 'offline-favorites'
+      const data = {
+        url: url
+      };
+      // update idb restaurants entry
+      dbPromise
+        .then(async db => {
+          const tx = db.transaction("restaurants", "readwrite");
+          const store = tx.objectStore("restaurants");
+          const obj = await store.get(Number(e.target.dataset.id));
+          obj.is_favorite = !favBool;
+          obj.updatedAt = moment.now();
+
+          store.put(obj);
+          return tx.complete;
+        })
+        .then(res => {
+          console.log("toggle aria-pressed to ", (!favBool).toString());
+          e.target.setAttribute("aria-pressed", (!favBool).toString());
+          e.target.blur();
+        })
+        .catch(function(err) {
+          console.log(err);
+        });
+      // save to offline-favorites
+      dbPromise
+        .then(db => {
+          const tx = db.transaction("offline-favorites", "readwrite");
+          tx.objectStore("offline-favorites").put(data);
+          return tx.complete;
+        })
+        .then(() => {
+          // https://developers.google.com/web/updates/2015/12/background-sync
+          // register sync with service worker
+          console.log("reg sync favorites");
+          navigator.serviceWorker.ready.then(function(registration) {
+            return registration.sync.register("offlineFavoriteSync");
+          });
+        });
+    });
+};
+
+generateFavButton = (restaurant, callback) => {
+  const favBtn = document.createElement("button");
+  favBtn.setAttribute("class", "fav");
+  favBtn.dataset.id = restaurant.id;
+  favBtn.setAttribute("onclick", `toggleFav(event, ${callback})`);
+  favBtn.setAttribute("onKeyPress", `toggleFav(event, ${callback})`);
+  let favBool;
+  if (restaurant.is_favorite) {
+    favBool = restaurant.is_favorite.toString() == "true";
+  } else {
+    favBool = false;
+  }
+  if (favBool) {
+    favBtn.setAttribute("aria-pressed", "true");
+    favBtn.setAttribute(
+      "aria-label",
+      `Remove ${restaurant.name} from my favorites`
+    );
+  } else {
+    favBtn.setAttribute("aria-pressed", "false");
+    favBtn.setAttribute("aria-label", `Add ${restaurant.name} to my favorites`);
+  }
+  //favBtn.innerHTML = "♡"
+  favBtn.innerHTML = "♥";
+  return favBtn;
+};

@@ -183,6 +183,10 @@ createRestaurantHTML = restaurant => {
 
   const name = document.createElement("h3");
   name.innerHTML = restaurant.name;
+  // Fill in favorite button
+  const favBtn = generateFavButton(restaurant, updateRestaurants);
+  name.appendChild(favBtn);
+  name.appendChild(favBtn);
   li.append(name);
 
   const neighborhood = document.createElement("p");
