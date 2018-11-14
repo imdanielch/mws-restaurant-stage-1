@@ -62,7 +62,7 @@ self.addEventListener("fetch", function(event) {
     if (requestUrl.pathname.startsWith("/restaurant.html")) {
       event.respondWith(
         caches.match("/restaurant.html").then(function(response) {
-          return response ? response : fetch(event.request);
+          return response ? response : fetch(event.request).catch(err => console.log("failed to fetch, possibly offline: ", err));
         })
       );
     }
@@ -80,7 +80,7 @@ self.addEventListener("fetch", function(event) {
 
   event.respondWith(
     caches.match(event.request).then(function(response) {
-      return response || fetch(event.request);
+      return response || fetch(event.request).catch(err => console.log("failed to fetch, possibly offline: ", err));
     })
   );
 });
@@ -101,7 +101,7 @@ function serveImage(request) {
       return fetch(request).then(function(networkResponse) {
         cache.put(storageUrl, networkResponse.clone());
         return networkResponse;
-      });
+      }).catch(err => console.log("failed to fetch, possibly offline: ", err));
     });
   });
 }
@@ -121,7 +121,6 @@ self.addEventListener('sync', function(event) {
 });
 
 onlinePushReview = () => {
-  console.log("onlinePushReview");
   // take from offline-reviews
   dbPromise
     .then(db => {
@@ -134,13 +133,13 @@ onlinePushReview = () => {
       if (allObjs.length > 0) {
         // we have offline reviews
         return Promise.all(allObjs.map( obj => {
-          console.log(obj);
           return fetch(`${DBHelper.DATABASE_URL}reviews`, {
             method: "POST",
             body: JSON.stringify(obj)
           })
           .then(response => {
             if(response.ok){
+              console.log("review entry synced");
               dbPromise.then(db => {
                 const tx = db.transaction("offline-reviews", "readwrite");
                 tx.objectStore("offline-reviews").delete(obj.id);
@@ -173,10 +172,10 @@ onlinePushFavorite = () => {
       if (allObjs.length > 0) {
         // we have offline reviews
         return Promise.all(allObjs.map( obj => {
-          console.log(obj);
           fetch(obj.url, { method: "PUT" })
           .then(response => {
             if(response.ok){
+              console.log("favorite entry synced");
               dbPromise.then(db => {
                 const tx = db.transaction("offline-reviews", "readwrite");
                 tx.objectStore("offline-reviews").delete(obj.id);

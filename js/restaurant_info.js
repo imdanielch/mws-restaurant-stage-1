@@ -162,7 +162,6 @@ restaurantFillRestaurantHoursHTML = (
  * Create all reviews HTML and add them to the webpage.
  */
 restaurantFillReviewsHTML = (reviews = self.reviews) => {
-  console.log(reviews);
   const container = document.getElementById("reviews-container");
   //container.innerHTML = "";
   const title = document.createElement("h3");
@@ -195,8 +194,8 @@ restaurantCreateReviewHTML = review => {
   if (review.updatedAt) {
     date.innerHTML =
       typeof review.updatedAt === "number"
-        ? moment.unix(review.updatedAt / 1000).format("MMM Do, YYYY h:mm:ss A")
-        : moment(review.updatedAt).format("MMM Do, YYYY h:mm:ss A");
+        ? moment.unix(review.updatedAt / 1000).format("MMM Do, YYYY")
+        : moment(review.updatedAt).format("MMM Do, YYYY");
   } else {
     date.innerHTML = "Offline Mode";
   }
@@ -325,7 +324,6 @@ errorHandleReview = data => {
  * if fetch post fails, save to indexedDB 'pending' until internet connection reestablishes
  */
 submitFormData = data => {
-  console.log(data);
   return fetch(`${DBHelper.DATABASE_URL}reviews`, {
     method: "POST",
     body: JSON.stringify(data)
@@ -369,6 +367,7 @@ submitFormData = data => {
           });
           // reload page to show the new entry.
           // can improve by using JS to append entry to end of page.
+          document.getElementById("review-form").reset();
           location.reload();
         });
     });

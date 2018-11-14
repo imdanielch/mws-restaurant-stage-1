@@ -199,7 +199,6 @@ class DBHelper {
           const obj2 = await store2.getAll(Number(id));
           // If no reviews in indexedDB, try fetching.
           const mergedObj = obj1.concat(obj2);
-          console.log(mergedObj);
           return callback(null, mergedObj);
         });
       });

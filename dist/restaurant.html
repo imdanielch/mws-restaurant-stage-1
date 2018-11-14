@@ -52,9 +52,9 @@
     <section id="reviews-container" aria-label="Restaurant reviews">
       <ul id="reviews-list"></ul>
     </section>
-    <section id="review-form-container" aria-label="Submit a new review">
+    <section id="review-form-container" ari-label="New review form">
       <h2>Submit Review</h2>
-      <form action="/reviews" method="post" onsubmit="onSubmitReview(event)" id="review-form">
+      <form action="/reviews" method="post" onsubmit="onSubmitReview(event)" id="review-form" aria-label="Submit a new review">
         <div>
           <input type="hidden" id="restaurant_id" name="restaurant_id" value="">
           <label for="name" required>Name:</label>
