@@ -163,7 +163,7 @@ restaurantFillRestaurantHoursHTML = (
  */
 restaurantFillReviewsHTML = (reviews = self.reviews) => {
   const container = document.getElementById("reviews-container");
-  //container.innerHTML = "";
+  container.innerHTML = `<ul id="reviews-list"></ul>`;
   const title = document.createElement("h3");
   title.innerHTML = "Reviews";
   container.appendChild(title);
@@ -324,12 +324,16 @@ errorHandleReview = data => {
  * if fetch post fails, save to indexedDB 'pending' until internet connection reestablishes
  */
 submitFormData = data => {
+  console.log("url: ", `${DBHelper.DATABASE_URL}reviews`);
+  console.log("packet: ", data);
   return fetch(`${DBHelper.DATABASE_URL}reviews`, {
     method: "POST",
     body: JSON.stringify(data)
   })
     .then(function(response) {
       if (response.status >= 200 && response.status < 300) {
+        console.log(response.status);
+        console.log(response.statusText);
         // call fetch for reviews and repopulate reviews HTML
         DBHelper.fetchRestaurantReviewsById(
           data.restaurant_id,
@@ -350,6 +354,7 @@ submitFormData = data => {
       }
     })
     .catch(function(error) {
+      console.log("submitFormData error catch");
       // POST failed, save to indexedDB 'offline-reviews'
       dbPromise
         .then(db => {

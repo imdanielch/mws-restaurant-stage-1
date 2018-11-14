@@ -59,13 +59,6 @@ self.addEventListener("fetch", function(event) {
     // When requesting restaurant.html the url contains params, we'll
     // strip the params to match restaurant.html and check if it's cached
     // if not, fall back to fetch from network.
-    if (requestUrl.pathname.startsWith("/restaurant.html")) {
-      event.respondWith(
-        caches.match("/restaurant.html").then(function(response) {
-          return response ? response : fetch(event.request).catch(err => console.log("failed to fetch, possibly offline: ", err));
-        })
-      );
-    }
 
     // If request is for images, call on serveImage
     if (requestUrl.pathname.startsWith("/img/")) {
@@ -76,13 +69,24 @@ self.addEventListener("fetch", function(event) {
       event.respondWith(serveImage(event.request));
       return;
     }
+    if (requestUrl.pathname.startsWith("/restaurant.html")) {
+      event.respondWith(
+        caches.match("/restaurant.html").then(function(response) {
+          return response ? response : fetch(requestUrl).catch(err => console.log("failed to fetch, possibly offline: ", err));
+        })
+      );
+    }
   }
 
-  event.respondWith(
-    caches.match(event.request).then(function(response) {
-      return response || fetch(event.request).catch(err => console.log("failed to fetch, possibly offline: ", err));
-    })
-  );
+  event.respondWith(caches.match(event.request).then(function(response) {
+    if (response){
+      return response;
+    } else {
+      console.log("hijack");
+      return fetch(event.request).catch(err => console.log("failed to fetch, possibly offline: ", err));
+    }
+  }));
+
 });
 
 /**
@@ -133,9 +137,11 @@ onlinePushReview = () => {
       if (allObjs.length > 0) {
         // we have offline reviews
         return Promise.all(allObjs.map( obj => {
+          let packet = Object.assign({}, obj);
+          delete packet.id;
           return fetch(`${DBHelper.DATABASE_URL}reviews`, {
             method: "POST",
-            body: JSON.stringify(obj)
+            body: JSON.stringify(packet)
           })
           .then(response => {
             if(response.ok){
