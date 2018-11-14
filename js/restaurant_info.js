@@ -373,7 +373,18 @@ submitFormData = data => {
           // reload page to show the new entry.
           // can improve by using JS to append entry to end of page.
           document.getElementById("review-form").reset();
-          location.reload();
+          DBHelper.fetchRestaurantReviewsById(
+            data.restaurant_id,
+            (error, reviews) => {
+              self.reviews = reviews;
+              if (!self.reviews) {
+                console.error(error);
+                return;
+              }
+              // fill reviews
+              restaurantFillReviewsHTML();
+            }
+          );
         });
     });
 };
