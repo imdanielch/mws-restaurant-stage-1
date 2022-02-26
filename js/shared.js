@@ -6,7 +6,7 @@ toggleFav = (e, callback) => {
     e.target.dataset.id
   }/?is_favorite=${!favBool}`;
   fetch(url, { method: "PUT" })
-    .then(response => {
+    .then((response) => {
       if (response.status >= 200 && response.status < 300) {
         e.target.setAttribute("aria-pressed", (!favBool).toString());
         e.target.blur();
@@ -15,11 +15,11 @@ toggleFav = (e, callback) => {
         }
       }
     })
-    .then(function() {
+    .then(function () {
       // update idb restaurants entry
       console.log("update idb favorite entry");
       return dbPromise
-        .then(async db => {
+        .then(async (db) => {
           const tx = db.transaction("restaurants", "readwrite");
           const store = tx.objectStore("restaurants");
           const obj = await store.get(Number(e.target.dataset.id));
@@ -29,19 +29,19 @@ toggleFav = (e, callback) => {
           store.put(obj);
           return tx.complete;
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
         });
     })
-    .catch(function(error) {
+    .catch(function (error) {
       // failed to fetch, maybe offline?
       // fetch post failed, save to indexedDB 'offline-favorites'
       const data = {
-        url: url
+        url: url,
       };
       // update idb restaurants entry
       dbPromise
-        .then(async db => {
+        .then(async (db) => {
           const tx = db.transaction("restaurants", "readwrite");
           const store = tx.objectStore("restaurants");
           const obj = await store.get(Number(e.target.dataset.id));
@@ -51,17 +51,17 @@ toggleFav = (e, callback) => {
           store.put(obj);
           return tx.complete;
         })
-        .then(res => {
+        .then((res) => {
           console.log("toggle aria-pressed to ", (!favBool).toString());
           e.target.setAttribute("aria-pressed", (!favBool).toString());
           e.target.blur();
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
         });
       // save to offline-favorites
       dbPromise
-        .then(db => {
+        .then((db) => {
           const tx = db.transaction("offline-favorites", "readwrite");
           tx.objectStore("offline-favorites").put(data);
           return tx.complete;
@@ -70,7 +70,7 @@ toggleFav = (e, callback) => {
           // https://developers.google.com/web/updates/2015/12/background-sync
           // register sync with service worker
           console.log("reg sync favorites");
-          navigator.serviceWorker.ready.then(function(registration) {
+          navigator.serviceWorker.ready.then(function (registration) {
             return registration.sync.register("offlineFavoriteSync");
           });
         });

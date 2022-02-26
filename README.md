@@ -7,6 +7,8 @@ Content is as follows:
 mapboxToken = '{YOUR MAPBOX API TOKEN}';
 ```
 
+Requires repository `mws-restaurant-stage-3` to function as API server.
+
 ---
 
 # Mobile Web Specialist Certification Course

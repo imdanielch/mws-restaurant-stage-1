@@ -1,46 +1,14 @@
 const gulp = require("gulp");
-const sass = require("gulp-sass");
+const sass = require('gulp-sass')(require('sass'));
+//const sass = require("gulp-sass");
 const gulpIf = require("gulp-if");
 const autoprefixer = require("gulp-autoprefixer");
 const browserSync = require("browser-sync").create();
 const concat = require("gulp-concat");
-const eslint = require("gulp-eslint");
+const eslint = require("gulp-eslint-new");
 
-gulp.task(
-  "default",
-  [
-    "copy-manifest",
-    "copy-html",
-    "copy-images",
-    "styles",
-    "lint-fix",
-    "scripts-dist",
-    "copy-js",
-    "copy-swjs"
-  ],
-  function() {
-    gulp.watch("*.js", ["lint-fix", "copy-swjs"]);
-    gulp.watch("js/**/*.js", ["lint-fix", "scripts-dist", "copy-js"]);
-    gulp.watch("*.html", ["copy-html"]);
-    gulp.watch("sass/**/*.scss", ["styles"]);
 
-    browserSync.init({
-      server: "./dist"
-    });
-  }
-);
-
-gulp.task("dist", [
-    "copy-html",
-    "copy-images",
-    "styles",
-    "lint-fix",
-    "scripts-dist",
-    "copy-js",
-    "copy-swjs"
-]);
-
-gulp.task("copy-js", function() {
+gulp.task("copy-js", async function() {
   gulp
     .src([
       "js/main.js",
@@ -52,7 +20,7 @@ gulp.task("copy-js", function() {
     .pipe(gulp.dest("dist/js"));
 });
 
-gulp.task("copy-swjs", function() {
+gulp.task("copy-swjs", async function() {
   gulp.src(["sw.js"]).pipe(gulp.dest("dist/"));
 });
 
@@ -62,7 +30,7 @@ function isFixed(file) {
   return file.eslint != null && file.eslint.fixed;
 }
 
-gulp.task("lint-fix", function() {
+gulp.task("lint-fix", async function() {
   return (
     gulp
       .src(["js/**/*.js"])
@@ -79,7 +47,7 @@ gulp.task("lint-fix", function() {
   );
 });
 
-gulp.task("lint", function() {
+gulp.task("lint", async function() {
   return (
     gulp
       .src(["js/**/*.js"])
@@ -95,19 +63,24 @@ gulp.task("lint", function() {
   );
 });
 
-gulp.task("copy-manifest", function() {
+gulp.task("copy-manifest", async function() {
   gulp.src("./manifest.json").pipe(gulp.dest("dist/"));
 });
 
-gulp.task("copy-html", function() {
+gulp.task("copy-html", async function() {
   gulp.src("./*.html").pipe(gulp.dest("dist/"));
 });
 
-gulp.task("copy-images", function() {
+gulp.task("copy-images", async function() {
   gulp.src("img/*").pipe(gulp.dest("dist/img"));
 });
 
-gulp.task("scripts-dist", function() {
+gulp.task("copy-app-images", async function() {
+  gulp.src("app-images/images/icons/*").pipe(gulp.dest("dist/images/icons"));
+  gulp.src("./favicon.ico").pipe(gulp.dest("dist/"));
+});
+
+gulp.task("scripts-dist", async function() {
   gulp
     .src([
       "js/**/*.js",
@@ -121,15 +94,48 @@ gulp.task("scripts-dist", function() {
     .pipe(gulp.dest("dist/js"));
 });
 
-gulp.task("styles", function() {
+gulp.task("styles", async function() {
   gulp
     .src("sass/**/*.scss")
     .pipe(sass().on("error", sass.logError))
-    .pipe(
-      autoprefixer({
-        browsers: ["last 2 versions"]
-      })
-    )
+    .pipe(autoprefixer())
     .pipe(gulp.dest("dist/css"))
     .pipe(browserSync.stream());
 });
+
+gulp.task(
+  "default",
+  gulp.series(
+    "copy-manifest",
+    "copy-html",
+    "copy-images",
+    "copy-app-images",
+    "styles",
+    "lint-fix",
+    "scripts-dist",
+    "copy-js",
+    "copy-swjs"
+  ),
+  function() {
+    gulp.watch("*.js", ["lint-fix", "copy-swjs"]);
+    gulp.watch("js/**/*.js", ["lint-fix", "scripts-dist", "copy-js"]);
+    gulp.watch("*.html", ["copy-html"]);
+    gulp.watch("sass/**/*.scss", ["styles"]);
+
+    browserSync.init({
+      server: "./dist"
+    });
+  }
+);
+
+gulp.task("dist", 
+  gulp.series(
+    "copy-html",
+    "copy-images",
+    "copy-app-images",
+    "styles",
+    "lint-fix",
+    "scripts-dist",
+    "copy-js",
+    "copy-swjs"
+));

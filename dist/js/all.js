@@ -19,28 +19,28 @@ class DBHelper {
     // reason is if there's more data remotely and some data on indexDB
     // you'd only get local data and never update.
     return dbPromise
-      .then(db => {
+      .then((db) => {
         return db
           .transaction("restaurants")
           .objectStore("restaurants")
           .getAll();
       })
-      .then(allObjs => {
+      .then((allObjs) => {
         if (allObjs.length > 0) {
           return callback(null, allObjs);
         }
       })
-      .then(e => {
+      .then((e) => {
         // update idb with data from network if available.
         fetch(`${DBHelper.DATABASE_URL}restaurants`, {
-          method: "GET"
+          method: "GET",
         })
-          .then(function(response) {
+          .then(function (response) {
             return response.status === 200 ? response.json() : response;
           })
-          .then(function(json) {
-            json.map(data => {
-              dbPromise.then(db => {
+          .then(function (json) {
+            json.map((data) => {
+              dbPromise.then((db) => {
                 const tx = db.transaction("restaurants", "readwrite");
                 tx.objectStore("restaurants").put(data);
                 return tx.complete;
@@ -48,22 +48,22 @@ class DBHelper {
             });
             return callback(null, json);
           })
-          .catch(function(error) {
+          .catch(function (error) {
             const errorMsg = `Request failed. Returned status of ${error}`;
             return callback(errorMsg, null);
           });
       })
-      .catch(function(error) {
+      .catch(function (error) {
         // if idb fails, try getting from network.
         fetch(`${DBHelper.DATABASE_URL}restaurants`, {
-          method: "GET"
+          method: "GET",
         })
-          .then(function(response) {
+          .then(function (response) {
             return response.status === 200 ? response.json() : response;
           })
-          .then(function(json) {
-            json.map(data => {
-              dbPromise.then(db => {
+          .then(function (json) {
+            json.map((data) => {
+              dbPromise.then((db) => {
                 const tx = db.transaction("restaurants", "readwrite");
                 tx.objectStore("restaurants").put(data);
                 return tx.complete;
@@ -71,7 +71,7 @@ class DBHelper {
             });
             return callback(null, json);
           })
-          .catch(function(error) {
+          .catch(function (error) {
             const errorMsg = `Request failed. Returned status of ${error}`;
             return callback(errorMsg, null);
           });
@@ -83,56 +83,56 @@ class DBHelper {
    */
   static fetchRestaurantById(id, callback) {
     return dbPromise
-      .then(db => {
+      .then((db) => {
         return db
           .transaction("restaurants")
           .objectStore("restaurants")
           .get(Number(id));
       })
-      .then(obj => {
+      .then((obj) => {
         if (obj) {
           return callback(null, obj);
         } else {
           // update from network
           fetch(`${DBHelper.DATABASE_URL}restaurants/${id}`, {
-            method: "GET"
+            method: "GET",
           })
-            .then(function(response) {
+            .then(function (response) {
               return response.status === 200 ? response.json() : response;
             })
-            .then(function(json) {
+            .then(function (json) {
               // save to store
-              dbPromise.then(db => {
+              dbPromise.then((db) => {
                 const tx = db.transaction("restaurants", "readwrite");
                 tx.objectStore("restaurants").put(json);
                 return tx.complete;
               });
               return callback(null, json);
             })
-            .catch(function(error) {
+            .catch(function (error) {
               callback("Restaurant does not exist", null);
             });
         }
       })
       .then(() => {})
-      .catch(function(err) {
+      .catch(function (err) {
         // update from network
         fetch(`${DBHelper.DATABASE_URL}restaurants/${id}`, {
-          method: "GET"
+          method: "GET",
         })
-          .then(function(response) {
+          .then(function (response) {
             return response.status === 200 ? response.json() : response;
           })
-          .then(function(json) {
+          .then(function (json) {
             // save to store
-            dbPromise.then(db => {
+            dbPromise.then((db) => {
               const tx = db.transaction("restaurants", "readwrite");
               tx.objectStore("restaurants").put(json);
               return tx.complete;
             });
             return callback(null, json);
           })
-          .catch(function(error) {
+          .catch(function (error) {
             callback("Restaurant does not exist", null);
           });
       });
@@ -147,18 +147,18 @@ class DBHelper {
   static fetchRestaurantReviewsById(id, callback) {
     // fetch network for new stuff and put into idb
     fetch(`${DBHelper.DATABASE_URL}reviews/?restaurant_id=${id}`, {
-      method: "GET"
+      method: "GET",
     })
-      .then(function(response) {
+      .then(function (response) {
         return response.status === 200 ? response.json() : response;
       })
-      .then(function(json) {
+      .then(function (json) {
         // save to store
-        dbPromise.then(db => {
+        dbPromise.then((db) => {
           const tx = db.transaction("reviews", "readwrite");
           // Should return array, so step through and put them in individually.
           if (Array.isArray(json)) {
-            json.map(review => {
+            json.map((review) => {
               return tx.objectStore("reviews").put(review);
             });
           }
@@ -166,9 +166,9 @@ class DBHelper {
         });
         return json;
       })
-      .then(function(json) {
+      .then(function (json) {
         // get data from idb
-        return dbPromise.then(async db => {
+        return dbPromise.then(async (db) => {
           const tx = db.transaction(
             ["reviews", "offline-reviews"],
             "readwrite"
@@ -184,9 +184,9 @@ class DBHelper {
           return callback(null, mergedObj);
         });
       })
-      .catch(function(error) {
+      .catch(function (error) {
         console.log(error);
-        return dbPromise.then(async db => {
+        return dbPromise.then(async (db) => {
           const tx = db.transaction(
             ["reviews", "offline-reviews"],
             "readwrite"
@@ -214,7 +214,7 @@ class DBHelper {
         callback(error, null);
       } else {
         // Filter restaurants to have only given cuisine type
-        const results = restaurants.filter(r => r.cuisine_type == cuisine);
+        const results = restaurants.filter((r) => r.cuisine_type == cuisine);
         callback(null, results);
       }
     });
@@ -230,7 +230,9 @@ class DBHelper {
         callback(error, null);
       } else {
         // Filter restaurants to have only given neighborhood
-        const results = restaurants.filter(r => r.neighborhood == neighborhood);
+        const results = restaurants.filter(
+          (r) => r.neighborhood == neighborhood
+        );
         callback(null, results);
       }
     });
@@ -252,11 +254,11 @@ class DBHelper {
         let results = restaurants;
         if (cuisine != "all") {
           // filter by cuisine
-          results = results.filter(r => r.cuisine_type == cuisine);
+          results = results.filter((r) => r.cuisine_type == cuisine);
         }
         if (neighborhood != "all") {
           // filter by neighborhood
-          results = results.filter(r => r.neighborhood == neighborhood);
+          results = results.filter((r) => r.neighborhood == neighborhood);
         }
         callback(null, results);
       }
@@ -332,7 +334,7 @@ class DBHelper {
       {
         title: restaurant.name,
         alt: restaurant.name,
-        url: DBHelper.urlForRestaurant(restaurant)
+        url: DBHelper.urlForRestaurant(restaurant),
       }
     );
     marker.addTo(newMap);
@@ -355,12 +357,12 @@ mapboxToken =
 
 // If browser supports service workers, register service worker.
 if (navigator.serviceWorker) {
-  window.addEventListener("load", function() {
+  window.addEventListener("load", function () {
     navigator.serviceWorker.register("/sw.js").then(
-      function(registration) {
+      function (registration) {
         console.log("Service worker registration successful!");
       },
-      function(error) {
+      function (error) {
         console.log("Unable to register service worker\n", error);
       }
     );
@@ -375,7 +377,7 @@ toggleFav = (e, callback) => {
     e.target.dataset.id
   }/?is_favorite=${!favBool}`;
   fetch(url, { method: "PUT" })
-    .then(response => {
+    .then((response) => {
       if (response.status >= 200 && response.status < 300) {
         e.target.setAttribute("aria-pressed", (!favBool).toString());
         e.target.blur();
@@ -384,11 +386,11 @@ toggleFav = (e, callback) => {
         }
       }
     })
-    .then(function() {
+    .then(function () {
       // update idb restaurants entry
       console.log("update idb favorite entry");
       return dbPromise
-        .then(async db => {
+        .then(async (db) => {
           const tx = db.transaction("restaurants", "readwrite");
           const store = tx.objectStore("restaurants");
           const obj = await store.get(Number(e.target.dataset.id));
@@ -398,19 +400,19 @@ toggleFav = (e, callback) => {
           store.put(obj);
           return tx.complete;
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
         });
     })
-    .catch(function(error) {
+    .catch(function (error) {
       // failed to fetch, maybe offline?
       // fetch post failed, save to indexedDB 'offline-favorites'
       const data = {
-        url: url
+        url: url,
       };
       // update idb restaurants entry
       dbPromise
-        .then(async db => {
+        .then(async (db) => {
           const tx = db.transaction("restaurants", "readwrite");
           const store = tx.objectStore("restaurants");
           const obj = await store.get(Number(e.target.dataset.id));
@@ -420,17 +422,17 @@ toggleFav = (e, callback) => {
           store.put(obj);
           return tx.complete;
         })
-        .then(res => {
+        .then((res) => {
           console.log("toggle aria-pressed to ", (!favBool).toString());
           e.target.setAttribute("aria-pressed", (!favBool).toString());
           e.target.blur();
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
         });
       // save to offline-favorites
       dbPromise
-        .then(db => {
+        .then((db) => {
           const tx = db.transaction("offline-favorites", "readwrite");
           tx.objectStore("offline-favorites").put(data);
           return tx.complete;
@@ -439,7 +441,7 @@ toggleFav = (e, callback) => {
           // https://developers.google.com/web/updates/2015/12/background-sync
           // register sync with service worker
           console.log("reg sync favorites");
-          navigator.serviceWorker.ready.then(function(registration) {
+          navigator.serviceWorker.ready.then(function (registration) {
             return registration.sync.register("offlineFavoriteSync");
           });
         });

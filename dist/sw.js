@@ -82,7 +82,6 @@ self.addEventListener("fetch", function(event) {
     if (response){
       return response;
     } else {
-      console.log("hijack");
       return fetch(event.request).catch(err => console.log("failed to fetch, possibly offline: ", err));
     }
   }));

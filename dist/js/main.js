@@ -5,7 +5,7 @@ var markers = [];
 /**
  * Fetch neighborhoods and cuisines as soon as the page is loaded.
  */
-document.addEventListener("DOMContentLoaded", event => {
+document.addEventListener("DOMContentLoaded", (event) => {
   initMap(); // added
   fetchNeighborhoods();
   fetchCuisines();
@@ -31,12 +31,14 @@ fetchNeighborhoods = () => {
  */
 fillNeighborhoodsHTML = (neighborhoods = self.neighborhoods) => {
   const select = document.getElementById("neighborhoods-select");
-  neighborhoods.forEach(neighborhood => {
-    const option = document.createElement("option");
-    option.innerHTML = neighborhood;
-    option.value = neighborhood;
-    select.append(option);
-  });
+  if (select.options.length <= 1) {
+    neighborhoods.forEach((neighborhood) => {
+      const option = document.createElement("option");
+      option.innerHTML = neighborhood;
+      option.value = neighborhood;
+      select.append(option);
+    });
+  }
 };
 
 /**
@@ -60,12 +62,14 @@ fetchCuisines = () => {
 fillCuisinesHTML = (cuisines = self.cuisines) => {
   const select = document.getElementById("cuisines-select");
 
-  cuisines.forEach(cuisine => {
-    const option = document.createElement("option");
-    option.innerHTML = cuisine;
-    option.value = cuisine;
-    select.append(option);
-  });
+  if (select.options.length <= 1) {
+    cuisines.forEach((cuisine) => {
+      const option = document.createElement("option");
+      option.innerHTML = cuisine;
+      option.value = cuisine;
+      select.append(option);
+    });
+  }
 };
 
 /**
@@ -77,18 +81,19 @@ initMap = () => {
     self.newMap = L.map("map", {
       center: [40.722216, -73.987501],
       zoom: 12,
-      scrollWheelZoom: false
+      scrollWheelZoom: false,
     });
     L.tileLayer(
-      "https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.jpg70?access_token={mapboxToken}",
+      "https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}",
+      //"https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.jpg70?access_token={mapboxToken}",
       {
-        mapboxToken: mapboxToken,
+        accessToken: mapboxToken,
         maxZoom: 18,
         attribution:
-          'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+          'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
           '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
           'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-        id: "mapbox.streets"
+        id: "mapbox/streets-v11",
       }
     ).addTo(newMap);
   } else {
@@ -144,7 +149,7 @@ updateRestaurants = () => {
 /**
  * Clear current restaurants, their HTML and remove their map markers.
  */
-resetRestaurants = restaurants => {
+resetRestaurants = (restaurants) => {
   // Remove all restaurants
   self.restaurants = [];
   const ul = document.getElementById("restaurants-list");
@@ -152,7 +157,7 @@ resetRestaurants = restaurants => {
 
   // Remove all map markers
   if (self.markers) {
-    self.markers.forEach(marker => marker.remove());
+    self.markers.forEach((marker) => marker.remove());
   }
   self.markers = [];
   self.restaurants = restaurants;
@@ -163,7 +168,7 @@ resetRestaurants = restaurants => {
  */
 fillRestaurantsHTML = (restaurants = self.restaurants) => {
   const ul = document.getElementById("restaurants-list");
-  restaurants.forEach(restaurant => {
+  restaurants.forEach((restaurant) => {
     ul.append(createRestaurantHTML(restaurant));
   });
   addMarkersToMap();
@@ -172,7 +177,7 @@ fillRestaurantsHTML = (restaurants = self.restaurants) => {
 /**
  * Create restaurant HTML.
  */
-createRestaurantHTML = restaurant => {
+createRestaurantHTML = (restaurant) => {
   const li = document.createElement("li");
 
   const image = document.createElement("img");
@@ -214,7 +219,7 @@ addMarkersToMap = (restaurants = self.restaurants) => {
   if (typeof L === "undefined" || typeof newMap === "undefined") {
     return;
   } else {
-    restaurants.forEach(restaurant => {
+    restaurants.forEach((restaurant) => {
       // Add marker to the map
       const marker = DBHelper.mapMarkerForRestaurant(restaurant, self.newMap);
       marker.on("click", onClick);

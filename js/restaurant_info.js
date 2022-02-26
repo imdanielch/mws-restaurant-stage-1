@@ -5,7 +5,7 @@ var newMap;
 /**
  * Initialize map as soon as the page is loaded.
  */
-document.addEventListener("DOMContentLoaded", event => {
+document.addEventListener("DOMContentLoaded", (event) => {
   restaurantInitMap();
 });
 
@@ -24,18 +24,20 @@ restaurantInitMap = () => {
         self.newMap = L.map("map", {
           center: [restaurant.latlng.lat, restaurant.latlng.lng],
           zoom: 16,
-          scrollWheelZoom: false
         });
         L.tileLayer(
-          "https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.jpg70?access_token={mapboxToken}",
+          //"https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.jpg70?access_token={mapboxToken}",
+          //"https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.jpg70?access_token={mapboxToken}",
+          "https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}",
           {
-            mapboxToken: mapboxToken,
+            accessToken: mapboxToken,
             maxZoom: 18,
+            tileSize: 256,
             attribution:
-              'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+              'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
               '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
               'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-            id: "mapbox.streets"
+            id: "mapbox/streets-v11",
           }
         ).addTo(newMap);
         DBHelper.mapMarkerForRestaurant(self.restaurant, self.newMap);
@@ -71,7 +73,7 @@ restaurantInitMap = () => {
 /**
  * Get current restaurant from page URL.
  */
-restaurantFetchRestaurantFromURL = callback => {
+restaurantFetchRestaurantFromURL = (callback) => {
   if (self.restaurant) {
     // restaurant already fetched!
     if (typeof callback === "function") {
@@ -175,7 +177,7 @@ restaurantFillReviewsHTML = (reviews = self.reviews) => {
     return;
   }
   const ul = document.getElementById("reviews-list");
-  reviews.forEach(review => {
+  reviews.forEach((review) => {
     ul.appendChild(restaurantCreateReviewHTML(review));
   });
   container.appendChild(ul);
@@ -184,7 +186,7 @@ restaurantFillReviewsHTML = (reviews = self.reviews) => {
 /**
  * Create review HTML and add it to the webpage.
  */
-restaurantCreateReviewHTML = review => {
+restaurantCreateReviewHTML = (review) => {
   const li = document.createElement("li");
   const name = document.createElement("p");
   name.innerHTML = review.name;
@@ -252,7 +254,7 @@ restaurantFillRestaurantIdForm = () => {
  * Start submit process when the submit button is activated.
  * gather form data, evaluate validity, submit if valid.
  */
-onSubmitReview = e => {
+onSubmitReview = (e) => {
   // stop default behavior
   e.preventDefault();
 
@@ -262,7 +264,7 @@ onSubmitReview = e => {
       restaurant_id: Number(form.restaurant_id.value),
       name: form.name.value,
       rating: Number(form.rating.value),
-      comments: form.comments.value || ""
+      comments: form.comments.value || "",
     };
     submitFormData(formData);
   }
@@ -272,7 +274,7 @@ onSubmitReview = e => {
  * Evaluate form data
  * return {Boolean}
  */
-errorHandleReview = data => {
+errorHandleReview = (data) => {
   // wipe all alerts.
   const alerts = document.getElementsByClassName("alert");
   while (alerts[0]) {
@@ -323,14 +325,14 @@ errorHandleReview = data => {
  * attempt fetch post, if it succeeds, trigger fetch for review list
  * if fetch post fails, save to indexedDB 'pending' until internet connection reestablishes
  */
-submitFormData = data => {
+submitFormData = (data) => {
   console.log("url: ", `${DBHelper.DATABASE_URL}reviews`);
   console.log("packet: ", data);
   return fetch(`${DBHelper.DATABASE_URL}reviews`, {
     method: "POST",
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   })
-    .then(function(response) {
+    .then(function (response) {
       if (response.status >= 200 && response.status < 300) {
         console.log(response.status);
         console.log(response.statusText);
@@ -353,11 +355,11 @@ submitFormData = data => {
         console.log(response.statusText);
       }
     })
-    .catch(function(error) {
+    .catch(function (error) {
       console.log("submitFormData error catch");
       // POST failed, save to indexedDB 'offline-reviews'
       dbPromise
-        .then(db => {
+        .then((db) => {
           const tx = db.transaction("offline-reviews", "readwrite");
           tx.objectStore("offline-reviews").put(data);
           return tx.complete;
@@ -366,7 +368,7 @@ submitFormData = data => {
           console.log("offline review put in idb");
           // https://developers.google.com/web/updates/2015/12/background-sync
           // register sync with service worker
-          navigator.serviceWorker.ready.then(function(registration) {
+          navigator.serviceWorker.ready.then(function (registration) {
             console.log("sync register offline review");
             return registration.sync.register("offlineReviewSync");
           });
