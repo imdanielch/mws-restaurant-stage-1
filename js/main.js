@@ -31,14 +31,12 @@ fetchNeighborhoods = () => {
  */
 fillNeighborhoodsHTML = (neighborhoods = self.neighborhoods) => {
   const select = document.getElementById("neighborhoods-select");
-  if (select.options.length <= 1) {
-    neighborhoods.forEach((neighborhood) => {
-      const option = document.createElement("option");
-      option.innerHTML = neighborhood;
-      option.value = neighborhood;
-      select.append(option);
-    });
-  }
+  neighborhoods.forEach((neighborhood) => {
+    const option = document.createElement("option");
+    option.innerHTML = neighborhood;
+    option.value = neighborhood;
+    select.append(option);
+  });
 };
 
 /**
@@ -62,14 +60,12 @@ fetchCuisines = () => {
 fillCuisinesHTML = (cuisines = self.cuisines) => {
   const select = document.getElementById("cuisines-select");
 
-  if (select.options.length <= 1) {
-    cuisines.forEach((cuisine) => {
-      const option = document.createElement("option");
-      option.innerHTML = cuisine;
-      option.value = cuisine;
-      select.append(option);
-    });
-  }
+  cuisines.forEach((cuisine) => {
+    const option = document.createElement("option");
+    option.innerHTML = cuisine;
+    option.value = cuisine;
+    select.append(option);
+  });
 };
 
 /**
